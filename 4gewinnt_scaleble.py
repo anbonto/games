@@ -1,6 +1,6 @@
 import os
 import random
-import time
+import threading
 
 
 def clear():
@@ -82,11 +82,19 @@ class Board:
         for i in range(len(self.states)):
             for j in range(2):
                 row = []
-                for x, y in zip(range(i, len(self.states)-i), range(0, len(cods)) if j == 0 else range(len(cods)-1, -1, -1)):
+                for x, y in zip(range(i, len(self.states)-i), range(len(cods)) if j == 0 else range(len(cods)-1, -1, -1)):
+                    row.append(cods[y][x])
+                if len(row) >= 4:
+                    rows.append(row)
+        for i in range(len(cods)):
+            for j in range(2):
+                row = []
+                for x, y in zip(range(0, len(self.states)) if j == 0 else range(len(self.states)-1, -1, -1), range(i, len(cods))):
                     row.append(cods[y][x])
                 if len(row) >= 4:
                     rows.append(row)
         return rows
+
 
 class Player:
     def __init__(self, symbol):
@@ -116,12 +124,24 @@ class Player:
 
 class Bot(Player):
     def play(self, cells, possible_moves):
-        time.sleep(0.01)
         if len(possible_moves) > 1:
             board.make_turn(random.randint(1, len(possible_moves)), self)
         else:
             board.make_turn(1, self)
 
+
+class botthread(threading.Thread):
+    is_won = False
+    def __init__(self, bot, board):
+        threading.Thread.__init__(self)
+        self.bot = bot
+        self.board = board
+
+    def run(self):
+        if not self.board.is_full():
+            self.bot.play(transpose(self.board.states, self.board.max_height), self.board.possible_moves())
+        if bot.is_win(board):
+            botthread.is_won = self.bot.symbol
 
 if __name__ == '__main__':
     players = []
@@ -130,12 +150,12 @@ if __name__ == '__main__':
     while a == 0:
         try:
             player_c = int(input("number of Players: "))
-            if player_c < 0 or player_c > 36:
-                print("there should be between 0-36 players")
+            if player_c < 0 or player_c > 26:
+                print("there should be between 0-26 players")
                 continue
             bot_c = int(input("number of Bots: "))
-            if bot_c < 0 or bot_c > 36:
-                print("there should be between 0-36 players")
+            if bot_c < 0 or bot_c > 26:
+                print("there should be between 0-26 players")
                 continue
             if bot_c+player_c == 0:
                 print("there has to be at least one player/bot")
@@ -161,14 +181,16 @@ if __name__ == '__main__':
                 player.play(board.possible_moves())
             board.print_board()
             if player.is_win(board):
+                board.print_board()
                 print("congratulation: player ", player.symbol, " has won")
                 exit()
         for bot in bots:
-            if not board.is_full():
-                bot.play(transpose(board.states, board.max_height), board.possible_moves())
-                if bot.is_win(board):
-                    board.print_board()
-                    print("congratulation: bot ", bot.symbol, " has won")
-                    exit()
+            thread = botthread(bot, board)
+            thread.start()
         board.print_board()
-        print("its a tie")
+        if botthread.is_won:
+            board.print_board()
+            print("congratulation: bot ", botthread.is_won, " has won")
+            exit()
+    board.print_board()
+    print("its a tie")
